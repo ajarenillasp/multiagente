@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # Ollama - Modelos de IA locales
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+    networks:
+      - multiagent-network
+
+  # Backend - FastAPI
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    container_name: multiagent-backend
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - INPUT_DIR=/app/input_docs
+      - OUTPUT_DIR=/app/output_docs
+    volumes:
+      - ./input_docs:/app/input_docs
+      - ./output_docs:/app/output_docs
+    depends_on:
+      - ollama
+    restart: unless-stopped
+    networks:
+      - multiagent-network
+
+  # Frontend - Vue.js
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    container_name: multiagent-frontend
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - multiagent-network
+
+  # Cloudflare Tunnel - Acceso remoto seguro
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    command: tunnel run
+    environment:
+      - TUNNEL_ID=${TUNNEL_ID}
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    volumes:
+      - ./docker/cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+      - cloudflared_creds:/etc/cloudflared
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+    networks:
+      - multiagent-network
+
+volumes:
+  ollama_data:
+  cloudflared_creds:
+
+networks:
+  multiagent-network:
+    driver: bridge

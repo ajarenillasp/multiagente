@@ -1,0 +1,24 @@
+# Cloudflare Tunnel Configuration
+# Reemplaza TUNNEL_ID y TUNNEL_TOKEN con tus credenciales reales
+
+tunnel: TUNNEL_ID
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  # Redirigir tráfico del frontend
+  - hostname: thor-agent.tudominio.com
+    service: http://frontend:3000
+  
+  # API backend
+  - hostname: thor-api.tudominio.com
+    service: http://backend:8000
+  
+  # Health check
+  - path: /health
+    service: http://backend:8000
+  
+  # Catch-all para el backend
+  - service: http://backend:8000
+  
+  # Default (404)
+  - service: http_status:404
