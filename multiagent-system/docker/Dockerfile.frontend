@@ -1,0 +1,24 @@
+# Frontend Dockerfile
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copiar package files
+COPY frontend/package*.json ./
+
+# Instalar dependencias
+RUN npm install
+
+# Copiar código del frontend
+COPY frontend/ ./
+
+# Construir para producción
+RUN npm run build
+
+# Exponer puerto
+EXPOSE 3000
+
+# Servir con un servidor HTTP simple
+RUN npm install -g serve
+
+CMD ["serve", "-s", "dist", "-l", "3000"]
